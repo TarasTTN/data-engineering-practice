@@ -1,4 +1,3 @@
-cat << 'EOF' > README.md
 # 🛠️ Data Engineering Lab & Practice Repository
 
 [![CI Pipeline](https://github.com/TarasTTN/data-engineering-practice/actions/workflows/ci.yml/badge.svg)](https://github.com/TarasTTN/data-engineering-practice/actions/workflows/ci.yml)
@@ -24,4 +23,3 @@ A structured repository containing practical data engineering modules, database 
 The repository is automatically verified via **GitHub Actions**:
 - **Linting:** Code formatting and PEP 8 enforcement via `ruff`.
 - **Unit Testing:** Automated assertions and pipeline sanity checks via `pytest`.
-EOF
