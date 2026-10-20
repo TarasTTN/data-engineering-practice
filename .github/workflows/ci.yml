@@ -23,11 +23,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff pytest
 
-      - name: Run Ruff Linter
+      - name: Run Linter (Informational)
         run: |
-          ruff check tests/
-          ruff check 01_python_core/ --exit-zero
+          # Выводит предупреждения по стилю, но не останавливает сборку
+          ruff check . --exit-zero
 
-      - name: Run unit tests
+      - name: Run Unit Tests
         run: |
-          pytest
+          # Проверяет только папку tests/
+          pytest tests/

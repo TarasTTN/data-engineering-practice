@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+
 def test_environment_smoke():
     """Базовый дымовой тест окружения."""
     assert True
