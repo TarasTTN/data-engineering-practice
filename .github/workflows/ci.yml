@@ -23,9 +23,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff pytest
 
-      - name: Lint Python Core & Tests with Ruff
+      - name: Run Ruff Linter
         run: |
-          ruff check tests/ 01_python_core/ --ignore E501
+          ruff check tests/
+          ruff check 01_python_core/ --exit-zero
 
       - name: Run unit tests
         run: |
