@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Памятка: Pandas, PyArrow и Parquet</title>
+<style>
+    @page { size: A4; margin: 15mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #1f2328; margin: 0; padding: 20px; font-size: 13px; }
+    h1 { font-size: 22px; border-bottom: 2px solid #0969da; padding-bottom: 8px; color: #0969da; margin-top: 0; }
+    h2 { font-size: 16px; border-bottom: 1px solid #d0d7de; padding-bottom: 5px; margin-top: 22px; color: #1f2328; }
+    h3 { font-size: 14px; margin-top: 14px; color: #24292f; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 12px; }
+    th, td { border: 1px solid #d0d7de; padding: 6px 10px; text-align: left; }
+    th { background-color: #f6f8fa; font-weight: 600; }
+    tr:nth-child(even) { background-color: #fcfcfc; }
+    code { background: #eff1f3; padding: 2px 5px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 11.5px; color: #0969da; }
+    pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 10px; overflow-x: auto; font-family: "SFMono-Regular", Consolas, monospace; font-size: 11.5px; line-height: 1.45; }
+    blockquote { border-left: 4px solid #0969da; padding: 4px 12px; color: #57609a; background: #f6f8fa; margin: 10px 0; font-size: 12px; }
+    .badge { display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: bold; border-radius: 4px; background: #ddf4ff; color: #0969da; }
+</style>
+</head>
+<body>
+
+<h1>Шпаргалка инженера данных: Pandas, PyArrow и Apache Parquet</h1>
+
+<h2>1. Архитектура: кто за что отвечает</h2>
+<table>
+  <tr>
+    <th>Компонент</th>
+    <th>Где живёт</th>
+    <th>Роль в системе</th>
+    <th>Зачем нужен</th>
+  </tr>
+  <tr>
+    <td><b>Pandas</b></td>
+    <td>Оперативная память (RAM)</td>
+    <td>Таблицы DataFrame</td>
+    <td>Быстрые вычисления, фильтрация, группировка (.groupby), агрегация (.agg).</td>
+  </tr>
+  <tr>
+    <td><b>Apache Parquet</b></td>
+    <td>Диск / S3 / DWH</td>
+    <td>Колоночный бинарный файл</td>
+    <td>Экстремальное сжатие, чтение только нужных колонок, хранение строгих типов данных.</td>
+  </tr>
+  <tr>
+    <td><b>PyArrow</b></td>
+    <td>Движок (библиотека на C++)</td>
+    <td>Мост между RAM и диском</td>
+    <td>Физически упаковывает таблицы Pandas в бинарные байты Parquet и читает их обратно.</td>
+  </tr>
+</table>
+<blockquote><b>Важно:</b> Мы пишем <code>import pandas as pd</code>. Библиотеку <code>pyarrow</code> импортировать в код не нужно — Pandas подключает её сам под капотом при вызове <code>to_parquet()</code> и <code>read_parquet()</code>.</blockquote>
+
+<h2>2. Строчные форматы vs Колоночный Parquet</h2>
+<ul>
+  <li><b>Строчные (CSV, JSON, Avro):</b> Данные пишутся строка за строкой. Чтобы посчитать среднюю сумму заказа в таблице на 100 ГБ, компьютеру придётся прочесть с диска все 100 ГБ целиком (включая ненужные имена, адреса и даты).</li>
+  <li><b>Колоночный (Parquet):</b> Данные хранятся стопками колонок. Для подсчёта суммы скрипт читает с диска <b>только байты колонки amount</b>, полностью пропуская остальные данные.</li>
+  <li><b>Сжатие:</b> Однотипные данные в колонке упаковываются алгоритмом <code>snappy</code> в 5–8 раз плотнее, чем обычный текст CSV.</li>
+</ul>
+
+<h2>3. Сводная таблица форматов данных</h2>
+<table>
+  <tr>
+    <th>Формат</th>
+    <th>Тип</th>
+    <th>Сжатие</th>
+    <th>Выборка колонок</th>
+    <th>Как обращаться к строке</th>
+    <th>Сфера применения</th>
+  </tr>
+  <tr>
+    <td><b>CSV</b></td>
+    <td>Текст</td>
+    <td>Нет</td>
+    <td>Нет (весь файл)</td>
+    <td><code>row[2]</code> (список) или <code>row['col']</code></td>
+    <td>Excel, простые ручные выгрузки</td>
+  </tr>
+  <tr>
+    <td><b>JSON</b></td>
+    <td>Текст</td>
+    <td>Очень слабое</td>
+    <td>Нет (весь файл)</td>
+    <td><code>row['field']</code> (словарь)</td>
+    <td>API сайтов, веб-приложения, конфиги</td>
+  </tr>
+  <tr>
+    <td><b>Avro</b></td>
+    <td>Бинарный</td>
+    <td>Высокое</td>
+    <td>Нет (вся строка)</td>
+    <td><code>row['field']</code> (словарь)</td>
+    <td>Apache Kafka, потоковая обработка</td>
+  </tr>
+  <tr>
+    <td><b>Parquet</b></td>
+    <td>Бинарный</td>
+    <td>Максимальное</td>
+    <td><b>Да (мгновенно)</b></td>
+    <td>Векторно через DataFrame</td>
+    <td>Хранилища данных, аналитика, Spark, DWH</td>
+  </tr>
+</table>
+
+<h2>4. Основные команды и практический синтаксис</h2>
+
+<h3>А. Чтение и сохранение Parquet</h3>
+<pre>import pandas as pd
+
+# 1. Сохранение таблицы на диск (index=False отключает служебные номера строк)
+df.to_parquet('orders.parquet', engine='pyarrow', compression='snappy', index=False)
+
+# 2. Быстрое чтение ТОЛЬКО нужных колонок (экономит до 90% оперативной памяти)
+df_sub = pd.read_parquet('orders.parquet', columns=['status', 'amount'])
+
+# 3. Чтение файла целиком
+df = pd.read_parquet('orders.parquet')</pre>
+
+<h3>Б. Фильтрация данных (Boolean Masking)</h3>
+<pre># Одиночное условие (скобки можно опустить)
+paid = df[df['status'] == 'paid']
+
+# Несколько условий: ОБЯЗАТЕЛЬНО круглые скобки (...) и символ & (И) или | (ИЛИ)
+target = df[(df['status'] == 'paid') & (df['amount'] >= 1000)]</pre>
+
+<h3>В. Группировка и расчёт метрик (.groupby + .agg)</h3>
+<pre># Одна метрика: считаем только сумму amount для каждого города
+revenue = df.groupby('city')['amount'].sum()
+
+# Несколько метрик по одной колонке (список функций)
+stats = df.groupby('city')['amount'].agg(['count', 'sum'])
+
+# Именованная агрегация (Named Aggregation) — самый чистый вариант для продакшена:
+city_summary = df.groupby('city').agg(
+    total_orders=('order_id', 'count'),   # количество заказов
+    total_revenue=('amount', 'sum'),      # сумма выручки
+    avg_check=('amount', 'mean')          # средний чек
+).reset_index()</pre>
+
+<h3>Г. Экспресс-диагностика DataFrame</h3>
+<pre>df.head(5)       # Показать первые 5 строк
+df.info()         # Список колонок, типы данных, наличие пропусков (NULL)
+df.describe()     # Статистика числовых полей: min, max, mean, квантили
+len(df)           # Количество строк в таблице</pre>
+
+</body>
+</html>
